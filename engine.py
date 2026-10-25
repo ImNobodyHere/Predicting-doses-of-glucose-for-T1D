@@ -13,19 +13,49 @@
 
 # The user will provide the amount of carbs of his meal 
 # We predict that every 12-15g of carbs => 1 insulin (The values varies on each person)
-
+import math
+import exceptions as e
 
 def get_icr_range():
-    return (12,15)
+    return (12, 15)
+
+def validate_carbs(value):
+    if isinstance(value, bool):
+        raise e.InvalidCarbsError("The value of carb must be a number.")
+    if not isinstance(value, (int, float)):
+        raise e.InvalidCarbsError("The value of carb must be a number.")
+    if not math.isfinite(value):
+        raise e.InvalidCarbsError("The value of carb is invalid!")
+    if value <= 0:
+        raise e.InvalidCarbsError("The value of carb must be positive.")
+    if value > e.HARD_LIMIT:
+        raise e.InvalidCarbsError("The value of carb must not be above 300.")
+
+    needs_confirmation = value > e.SOFT_LIMIT
+    return value, needs_confirmation
 
 def meal_dose_range(carbs_g):
-    icr_low, icr_max = get_icr_range()
-    min_result = carbs_g / icr_low
-    max_result = carbs_g / icr_max
-    return min_result, max_result
+    icr_low, icr_high = get_icr_range()
+    dose_min = carbs_g / icr_high
+    dose_max = carbs_g / icr_low
+    return dose_min, dose_max
 
-class InvalidCarbsError(ValueError):
-    pass
+if __name__ == "__main__":
+    try:
+        raw = input("Insert your carbohydrate value: ")
+        carbs_g, needs_confirmation = validate_carbs(float(raw))
+
+        if needs_confirmation:
+            answer = input(f"You entered {carbs_g} g, is that correct? (y/n): ")
+            if answer.lower() != "y":
+                raise SystemExit("Cancelled.")
+
+        dose_min, dose_max = meal_dose_range(carbs_g)
+        print(f"Minimum injection: {dose_min:.1f} units || Maximum injection: {dose_max:.1f} units")
+
+    except (ValueError, e.InvalidCarbsError) as err:
+        print(err)
+
 
 
 
